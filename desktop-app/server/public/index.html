@@ -574,18 +574,8 @@
       }
     }
 
-    // Throttle touch events for better performance
-    let lastTouchSent = 0;
-    const TOUCH_THROTTLE_MS = 16; // ~60fps max
-
     function sendTouchEvent(action, data) {
       if (ws && ws.readyState === WebSocket.OPEN && isAuthenticated) {
-        // Throttle move events to reduce network traffic
-        if (action === 'move') {
-          const now = Date.now();
-          if (now - lastTouchSent < TOUCH_THROTTLE_MS) return;
-          lastTouchSent = now;
-        }
         ws.send(JSON.stringify({ type: 'touch', action: action, ...data, timestamp: Date.now() }));
       }
     }

@@ -118,31 +118,8 @@ wss.on('close', () => {
   clearInterval(heartbeatInterval);
 });
 
-// Valid message types for security
-const VALID_MESSAGE_TYPES = ['register', 'auth', 'touch', 'browser', 'heartbeat', 'setPairingCode', 'ping'];
-
-// Rate limiting for auth attempts
-const authAttempts = new Map(); // ip -> { count, lastAttempt }
-
-function checkAuthRateLimit(ip) {
-  const now = Date.now();
-  const record = authAttempts.get(ip) || { count: 0, lastAttempt: 0 };
-
-  // Reset after 1 minute
-  if (now - record.lastAttempt > 60000) {
-    record.count = 0;
-  }
-
-  record.count++;
-  record.lastAttempt = now;
-  authAttempts.set(ip, record);
-
-  return record.count <= 5; // Max 5 attempts per minute
-}
-
 wss.on('connection', (ws, req) => {
-  const clientIP = req.socket.remoteAddress;
-  console.log('[Server] New connection from:', clientIP);
+  console.log('[Server] New connection from:', req.socket.remoteAddress);
 
   // Disable Nagle's algorithm for lower latency (turbo mode optimization)
   if (req.socket.setNoDelay) {
@@ -150,7 +127,7 @@ wss.on('connection', (ws, req) => {
   }
 
   // Initial client info - NOT authenticated
-  clients.set(ws, { type: 'unknown', alive: true, authenticated: false, sessionId: null, ip: clientIP });
+  clients.set(ws, { type: 'unknown', alive: true, authenticated: false, sessionId: null });
 
   // Handle pong response (keep-alive)
   ws.on('pong', () => {
@@ -165,12 +142,6 @@ wss.on('connection', (ws, req) => {
     try {
       const message = JSON.parse(data);
       const info = clients.get(ws);
-
-      // Validate message type
-      if (!message.type || !VALID_MESSAGE_TYPES.includes(message.type)) {
-        console.log(`[Server] Rejected invalid message type: ${message.type}`);
-        return;
-      }
 
       // Mark as alive on any message
       if (info) {
@@ -203,13 +174,6 @@ wss.on('connection', (ws, req) => {
 
       // Handle mobile authentication
       if (message.type === 'auth') {
-        // Rate limit auth attempts
-        if (!checkAuthRateLimit(info.ip)) {
-          ws.send(JSON.stringify({ type: 'authResult', success: false, error: 'Too many attempts. Try again later.' }));
-          console.log(`[Server] Rate limited auth from: ${info.ip}`);
-          return;
-        }
-
         // Check if code matches any active session
         let validSession = null;
         for (const [sessionId, code] of sessionCodes.entries()) {

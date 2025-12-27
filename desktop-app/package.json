@@ -1,0 +1,59 @@
+{
+    "name": "chrome-touchpad-remote",
+    "version": "1.0.0",
+    "description": "Control Chrome from your phone - Desktop App",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build:mac": "electron-builder --mac",
+        "build:win": "electron-builder --win",
+        "build:all": "electron-builder --mac --win"
+    },
+    "author": "Your Name",
+    "license": "MIT",
+    "dependencies": {
+        "ws": "^8.14.2"
+    },
+    "devDependencies": {
+        "electron": "^28.0.0",
+        "electron-builder": "^24.9.1"
+    },
+    "build": {
+        "appId": "com.chrometouchpad.remote",
+        "productName": "Chrome Touchpad Remote",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "renderer/**/*",
+            "server/**/*",
+            "extension/**/*",
+            "assets/**/*"
+        ],
+        "mac": {
+            "category": "public.app-category.utilities",
+            "icon": "assets/icon.icns",
+            "target": [
+                "dmg",
+                "zip"
+            ]
+        },
+        "win": {
+            "icon": "assets/icon.ico",
+            "target": [
+                "nsis",
+                "portable"
+            ]
+        },
+        "dmg": {
+            "title": "Chrome Touchpad Remote",
+            "icon": "assets/icon.icns"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true
+        }
+    }
+}

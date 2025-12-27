@@ -125,19 +125,22 @@
         let element = getElementAtCursor();
         if (!element) return;
 
-
+        // DEBUG: Log what we're clicking
+        console.log('[Touchpad] Click at:', cursorX, cursorY);
+        console.log('[Touchpad] Element:', element.tagName, element.className, element.id);
+        console.log('[Touchpad] Element type:', element.constructor.name);
 
         // FIX: If we hit SVG or text node, find nearest HTMLElement parent
         // SVG elements and text nodes don't have .click() method
         if (!(element instanceof HTMLElement)) {
-
+            console.log('[Touchpad] Not HTMLElement, finding parent...');
             let parent = element.parentElement;
             while (parent && !(parent instanceof HTMLElement)) {
                 parent = parent.parentElement;
             }
             if (parent) {
                 element = parent;
-
+                console.log('[Touchpad] Using parent:', element.tagName, element.className);
             }
         }
 
@@ -171,10 +174,10 @@
             // 2. Direct click on element (only if it's an HTMLElement)
             if (element instanceof HTMLElement && typeof element.click === 'function') {
                 try {
-
+                    console.log('[Touchpad] Calling element.click() on', element.tagName);
                     element.click();
                 } catch (e) {
-                    // Direct click failed, continue with other methods
+                    console.log('[Touchpad] Direct click failed:', e.message);
                 }
             }
 
@@ -182,11 +185,11 @@
             // Video controls are usually in <button> tags
             const button = element.closest('button, [role="button"], a');
             if (button && button !== element && button instanceof HTMLElement) {
-
+                console.log('[Touchpad] Found button parent:', button.tagName, button.className);
                 try {
                     button.click();
                 } catch (e) {
-                    // Button click failed
+                    console.log('[Touchpad] Button click failed:', e.message);
                 }
             }
 
@@ -198,14 +201,15 @@
             while (parent && depth < maxDepth) {
                 try {
                     if (parent instanceof HTMLElement && typeof parent.click === 'function') {
-                        // Click parent element
+                        const info = `${parent.tagName}.${parent.className || 'no-class'}#${parent.id || 'no-id'}`;
+                        console.log(`[Touchpad] Clicking parent ${depth}:`, info);
                         parent.click();
 
                         // Also dispatch click event
                         parent.dispatchEvent(new MouseEvent('click', eventOptions));
                     }
                 } catch (e) {
-                    // Parent click failed, continue
+                    console.log(`[Touchpad] Parent ${depth} click failed:`, e.message);
                 }
                 parent = parent.parentElement;
                 depth++;
@@ -216,10 +220,10 @@
                 const shadowElement = element.shadowRoot.elementFromPoint(cursorX, cursorY);
                 if (shadowElement && shadowElement instanceof HTMLElement) {
                     try {
-
+                        console.log('[Touchpad] Clicking shadow element:', shadowElement.tagName);
                         shadowElement.click();
                     } catch (e) {
-                        // Shadow click failed
+                        console.log('[Touchpad] Shadow click failed:', e.message);
                     }
                 }
             }
@@ -246,23 +250,26 @@
                     inputType: inputElement.type || 'text',
                     placeholder: inputElement.placeholder || '',
                     currentValue: inputElement.value || ''
-                }).catch(() => { });
+                }).catch((e) => console.log('[Touchpad] Failed to notify input focus:', e.message));
             } else {
                 if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
                     document.activeElement.blur();
                 }
 
-                chrome.runtime.sendMessage({ type: 'inputBlurred' }).catch(() => { });
+                chrome.runtime.sendMessage({ type: 'inputBlurred' })
+                    .catch((e) => console.log('[Touchpad] Failed to notify input blur:', e.message));
 
-                // 7. SPECIAL: If clicking on a video area, directly control play/pause
-                const clickedOnVideoArea = element.closest('video, [class*="video"], [class*="player"], [class*="watch"]');
-                const videoElement = clickedOnVideoArea ? document.querySelector('video') : null;
+                // 7. SPECIAL: If clicking on a video, directly control play/pause
+                // This bypasses Chrome's user gesture restriction
+                const videoElement = document.querySelector('video');
 
                 if (videoElement) {
+                    console.log('[Touchpad] Found video element, directly toggling play/pause');
+                    console.log('[Touchpad] Video paused:', videoElement.paused);
 
                     if (videoElement.paused) {
                         videoElement.play().catch(e => {
-                            // Play failed, try keyboard fallback
+                            console.log('[Touchpad] Play failed:', e.message);
                             // Fallback to keyboard
                             simulateKeyPress(' ');
                         });
