@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 320px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        h1 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            flex-shrink: 0;
+        }
+
+        .status-dot.connected {
+            background: #44ff44;
+            box-shadow: 0 0 10px #44ff44;
+        }
+
+        .status-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .server-info {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .info-value {
+            font-family: monospace;
+            color: #667eea;
+        }
+
+        /* Pairing Code Display */
+        .pairing-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .pairing-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .pairing-code {
+            font-size: 48px;
+            font-weight: 700;
+            letter-spacing: 8px;
+            font-family: monospace;
+            margin: 8px 0;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .pairing-hint {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 8px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .qr-section {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .qr-section h3 {
+            font-size: 12px;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        #qr-code {
+            display: inline-block;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        #qr-code canvas {
+            display: block;
+        }
+
+        #mobile-url {
+            font-size: 11px;
+            font-family: monospace;
+            color: rgba(255, 255, 255, 0.7);
+            word-break: break-all;
+        }
+
+        .scan-hint {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-icon">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z" />
+            </svg>
+        </div>
+        <div>
+            <h1>Chrome Touchpad</h1>
+            <div class="subtitle">Control Chrome with your iPhone</div>
+        </div>
+    </div>
+
+    <div class="pairing-card">
+        <div class="pairing-label">Your Pairing Code</div>
+        <div id="pairing-code-display" class="pairing-code">------</div>
+        <div class="pairing-hint">Enter this code on your mobile device</div>
+    </div>
+
+    <div class="status-card">
+        <div class="status-row">
+            <div id="status-dot" class="status-dot"></div>
+            <span id="status-text" class="status-text">Disconnected</span>
+        </div>
+        <div class="server-info">
+            <div class="info-row">
+                <span class="info-label">Server IP</span>
+                <span id="current-ip" class="info-value">localhost</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Port</span>
+                <span class="info-value">8765</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label for="server-ip">Server IP Address</label>
+        <input type="text" id="server-ip" placeholder="e.g., 192.168.1.100">
+    </div>
+
+    <button id="connect-btn" class="btn btn-primary">Connect</button>
+
+    <div class="qr-section">
+        <h3>📱 Scan with iPhone</h3>
+        <div id="qr-code"></div>
+        <div id="mobile-url">http://&lt;server-ip&gt;:8765</div>
+        <div class="scan-hint">Open Camera app and point at QR code</div>
+    </div>
+
+    <script src="qrcode.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

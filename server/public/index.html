@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#667eea">
+  <meta name="description" content="Control your Chrome browser from your phone">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Chrome Touchpad</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Auth overlay */
+    #auth-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    #auth-overlay.hidden {
+      display: none;
+    }
+
+    .auth-container {
+      text-align: center;
+      max-width: 320px;
+    }
+
+    .auth-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .auth-icon svg {
+      width: 48px;
+      height: 48px;
+      fill: white;
+    }
+
+    .auth-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 32px;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 16px;
+      font-size: 24px;
+      text-align: center;
+      letter-spacing: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      outline: none;
+      margin-bottom: 16px;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .auth-input:focus {
+      border-color: #667eea;
+    }
+
+    .auth-input::placeholder {
+      letter-spacing: 4px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-btn:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+
+    .auth-error {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 16px;
+      min-height: 20px;
+    }
+
+    #touchpad {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 120px;
+      touch-action: none;
+    }
+
+    #status-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      padding: 12px 20px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    #status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff4444;
+      transition: background 0.3s;
+    }
+
+    #status-dot.connected {
+      background: #44ff44;
+      box-shadow: 0 0 10px #44ff44;
+    }
+
+    #latency {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    #browser-toolbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-around;
+      gap: 6px;
+      z-index: 101;
+    }
+
+    #extras-panel {
+      display: none;
+      position: fixed;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      padding: 16px;
+      padding-bottom: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 100;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #extras-panel.visible {
+      display: flex;
+    }
+
+    .extras-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .extras-input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .extras-input:focus {
+      border-color: #667eea;
+    }
+
+    .extras-btn {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .browser-btn {
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .browser-btn:active {
+      background: rgba(102, 126, 234, 0.5);
+      transform: scale(0.9);
+    }
+
+    .browser-btn.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .browser-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: white;
+    }
+
+    .touch-point {
+      position: fixed;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+    }
+
+    .ripple {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(1);
+      animation: ripple 0.6s ease-out forwards;
+      z-index: 50;
+    }
+
+    @keyframes ripple {
+      to {
+        transform: translate(-50%, -50%) scale(4);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Auth Overlay -->
+  <div id="auth-overlay">
+    <div class="auth-container">
+      <div class="auth-icon">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" />
+        </svg>
+      </div>
+      <div class="auth-title">Chrome Touchpad</div>
+      <div class="auth-subtitle">Enter the 6-digit pairing code shown on the server</div>
+      <input type="text" id="pairing-code" class="auth-input" placeholder="000000" maxlength="6" pattern="[0-9]*"
+        inputmode="numeric">
+      <button id="auth-btn" class="auth-btn">Connect</button>
+      <div id="auth-error" class="auth-error"></div>
+    </div>
+  </div>
+
+  <div id="touchpad"></div>
+
+  <div id="status-bar">
+    <div id="status">
+      <div id="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+    <span id="latency"></span>
+  </div>
+
+  <div id="extras-panel">
+    <div class="extras-row">
+      <input type="text" id="url-input" class="extras-input" placeholder="Enter URL...">
+      <button class="extras-btn" id="go-url-btn">Go</button>
+    </div>
+    <div class="extras-row">
+      <input type="text" id="text-input" class="extras-input" placeholder="Type text..." autocomplete="off"
+        autocorrect="on">
+      <button class="extras-btn" id="send-text-btn">Send</button>
+    </div>
+    <div class="extras-row" style="align-items: center;">
+      <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white; flex-shrink: 0;">
+        <path
+          d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z" />
+      </svg>
+      <input type="range" id="volume-slider" min="0" max="100" value="50"
+        style="flex: 1; margin: 0 10px; accent-color: #667eea;">
+      <span id="volume-value" style="color: white; min-width: 35px; text-align: right;">50%</span>
+    </div>
+  </div>
+
+  <div id="browser-toolbar">
+    <button class="browser-btn" id="prevtab-btn" title="Previous Tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z" />
+      </svg>
+    </button>
+    <button class="browser-btn" id="nav-back-btn" title="Back">
+      <svg viewBox="0 0 24 24">
+        <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+      </svg>
+    </button>
+    <button class="browser-btn" id="refresh-btn" title="Refresh">
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+      </svg>
+    </button>
+    <button class="browser-btn" id="fullscreen-btn" title="Fullscreen (F)">
+      <svg viewBox="0 0 24 24">
+        <path d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z" />
+      </svg>
+    </button>
+    <button class="browser-btn" id="more-btn" title="More">
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M16,12A2,2 0 0,1 18,10A2,2 0 0,1 20,12A2,2 0 0,1 18,14A2,2 0 0,1 16,12M10,12A2,2 0 0,1 12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12M4,12A2,2 0 0,1 6,10A2,2 0 0,1 8,12A2,2 0 0,1 6,14A2,2 0 0,1 4,12Z" />
+      </svg>
+    </button>
+    <button class="browser-btn" id="nav-forward-btn" title="Forward">
+      <svg viewBox="0 0 24 24">
+        <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z" />
+      </svg>
+    </button>
+    <button class="browser-btn" id="nexttab-btn" title="Next Tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" />
+      </svg>
+    </button>
+  </div>
+
+  <script>
+    const touchpad = document.getElementById('touchpad');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const latencyDisplay = document.getElementById('latency');
+    const textInput = document.getElementById('text-input');
+    const authOverlay = document.getElementById('auth-overlay');
+    const pairingCodeInput = document.getElementById('pairing-code');
+    const authBtn = document.getElementById('auth-btn');
+    const authError = document.getElementById('auth-error');
+
+    let ws = null;
+    let isConnected = false;
+    let isAuthenticated = false;
+    let lastTouchTime = 0;
+    let lastTapTime = 0;
+    let touchPoints = new Map();
+    let lastSingleTouchPos = null;
+    let scrollStartY = null;
+    let scrollStartX = null;
+    let wasScrolling = false;
+    let maxTouchCount = 0;
+    let lastInputValue = '';
+    let reconnectDelay = 500;
+    let reconnectAttempts = 0;
+    const SENSITIVITY = 3.0; // Balanced sensitivity for smooth control
+    let totalMovement = 0;
+    let storedPairingCode = localStorage.getItem('pairingCode') || '';
+
+    // Check if already authenticated
+    if (storedPairingCode) {
+      pairingCodeInput.value = storedPairingCode;
+    }
+
+    // Auth button handler
+    authBtn.addEventListener('click', () => {
+      const code = pairingCodeInput.value.trim();
+      if (code.length !== 6) {
+        authError.textContent = 'Please enter a 6-digit code';
+        return;
+      }
+      storedPairingCode = code;
+      localStorage.setItem('pairingCode', code);
+      authError.textContent = '';
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'auth', code: code }));
+      } else {
+        connect();
+      }
+    });
+
+    // Enter key for auth
+    pairingCodeInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        authBtn.click();
+      }
+    });
+
+    function connect() {
+      statusText.textContent = reconnectAttempts > 0 ? `Reconnecting (${reconnectAttempts})...` : 'Connecting...';
+
+      const wsUrl = `ws://${window.location.host}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        isConnected = true;
+        reconnectDelay = 500;
+        reconnectAttempts = 0;
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected';
+
+        // Auto-auth if we have a stored code
+        if (storedPairingCode) {
+          ws.send(JSON.stringify({ type: 'auth', code: storedPairingCode }));
+        }
+      };
+
+      ws.onclose = () => {
+        isConnected = false;
+        isAuthenticated = false;
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Disconnected';
+        latencyDisplay.textContent = '';
+
+        reconnectAttempts++;
+        reconnectDelay = Math.min(reconnectDelay * 1.5, 5000);
+        setTimeout(connect, reconnectDelay);
+      };
+
+      ws.onerror = (err) => {
+        console.error('[Touchpad] WebSocket error:', err);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.type === 'authResult') {
+            if (msg.success) {
+              isAuthenticated = true;
+              authOverlay.classList.add('hidden');
+              ws.send(JSON.stringify({ type: 'register', clientType: 'mobile' }));
+              pingLatency();
+              if (navigator.vibrate) navigator.vibrate(100);
+            } else {
+              authError.textContent = msg.error || 'Invalid pairing code';
+              localStorage.removeItem('pairingCode');
+              storedPairingCode = '';
+            }
+            return;
+          }
+
+          if (msg.type === 'error') {
+            authError.textContent = msg.message;
+            authOverlay.classList.remove('hidden');
+            return;
+          }
+
+          if (msg.type === 'pong') {
+            const latency = Date.now() - msg.timestamp;
+            latencyDisplay.textContent = `${latency}ms`;
+          }
+
+          if (msg.type === 'openKeyboard') {
+            const extrasPanel = document.getElementById('extras-panel');
+            const moreBtn = document.getElementById('more-btn');
+            extrasPanel.classList.add('visible');
+            moreBtn.classList.add('active');
+            textInput.value = msg.currentValue || '';
+            lastInputValue = textInput.value;
+            textInput.placeholder = msg.placeholder || 'Type here...';
+            textInput.focus();
+            textInput.setSelectionRange(textInput.value.length, textInput.value.length);
+            if (navigator.vibrate) navigator.vibrate(50);
+          }
+
+          if (msg.type === 'closeKeyboard') {
+            const extrasPanel = document.getElementById('extras-panel');
+            const moreBtn = document.getElementById('more-btn');
+            if (extrasPanel.classList.contains('visible')) {
+              extrasPanel.classList.remove('visible');
+              moreBtn.classList.remove('active');
+              textInput.blur();
+            }
+          }
+        } catch (e) {
+          console.error('[Touchpad] Error parsing message:', e.message);
+        }
+      };
+    }
+
+    function pingLatency() {
+      if (ws && ws.readyState === WebSocket.OPEN && isAuthenticated) {
+        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+      }
+      setTimeout(pingLatency, 2000);
+    }
+
+    function sendBrowserCommand(action, url) {
+      if (ws && ws.readyState === WebSocket.OPEN && isAuthenticated) {
+        const message = { type: 'browser', action: action, timestamp: Date.now() };
+        if (url) message.url = url;
+        ws.send(JSON.stringify(message));
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    }
+
+    function sendTouchEvent(action, data) {
+      if (ws && ws.readyState === WebSocket.OPEN && isAuthenticated) {
+        ws.send(JSON.stringify({ type: 'touch', action: action, ...data, timestamp: Date.now() }));
+      }
+    }
+
+    function createTouchPoint(id, x, y) {
+      const point = document.createElement('div');
+      point.className = 'touch-point';
+      point.id = `touch-${id}`;
+      point.style.left = `${x}px`;
+      point.style.top = `${y}px`;
+      document.body.appendChild(point);
+      touchPoints.set(id, point);
+    }
+
+    function updateTouchPoint(id, x, y) {
+      const point = touchPoints.get(id);
+      if (point) {
+        point.style.left = `${x}px`;
+        point.style.top = `${y}px`;
+      }
+    }
+
+    function removeTouchPoint(id) {
+      const point = touchPoints.get(id);
+      if (point) {
+        point.remove();
+        touchPoints.delete(id);
+      }
+    }
+
+    function createRipple(x, y) {
+      const ripple = document.createElement('div');
+      ripple.className = 'ripple';
+      ripple.style.left = `${x}px`;
+      ripple.style.top = `${y}px`;
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    }
+
+    // Touch event handlers
+    touchpad.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+
+      for (let i = 0; i < touches.length; i++) {
+        const touch = touches[i];
+        createTouchPoint(touch.identifier, touch.clientX, touch.clientY);
+      }
+
+      if (touches.length === 1) {
+        lastSingleTouchPos = { x: touches[0].clientX, y: touches[0].clientY };
+        totalMovement = 0;
+      } else if (touches.length === 2) {
+        scrollStartY = (touches[0].clientY + touches[1].clientY) / 2;
+        scrollStartX = (touches[0].clientX + touches[1].clientX) / 2;
+        wasScrolling = true;
+      }
+
+      maxTouchCount = Math.max(maxTouchCount, touches.length);
+      lastTouchTime = Date.now();
+    }, { passive: false });
+
+    touchpad.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+
+      for (let i = 0; i < touches.length; i++) {
+        const touch = touches[i];
+        updateTouchPoint(touch.identifier, touch.clientX, touch.clientY);
+      }
+
+      if (touches.length === 1 && lastSingleTouchPos) {
+        const dx = (touches[0].clientX - lastSingleTouchPos.x) * SENSITIVITY;
+        const dy = (touches[0].clientY - lastSingleTouchPos.y) * SENSITIVITY;
+        totalMovement += Math.abs(dx) + Math.abs(dy);
+        sendTouchEvent('move', { dx, dy });
+        lastSingleTouchPos = { x: touches[0].clientX, y: touches[0].clientY };
+      } else if (touches.length === 2 && scrollStartY !== null) {
+        const midY = (touches[0].clientY + touches[1].clientY) / 2;
+        const midX = (touches[0].clientX + touches[1].clientX) / 2;
+        sendTouchEvent('scroll', { dx: (scrollStartX - midX) * 3, dy: (scrollStartY - midY) * 3 });
+        scrollStartY = midY;
+        scrollStartX = midX;
+      }
+    }, { passive: false });
+
+    touchpad.addEventListener('touchend', (e) => {
+      e.preventDefault();
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        removeTouchPoint(e.changedTouches[i].identifier);
+      }
+
+      const touchDuration = Date.now() - lastTouchTime;
+      const remainingTouches = e.touches.length;
+
+      if (remainingTouches === 0 && touchDuration < 200 && e.changedTouches.length === 1 && !wasScrolling && maxTouchCount === 1 && totalMovement < 10) {
+        const touch = e.changedTouches[0];
+        createRipple(touch.clientX, touch.clientY);
+
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+          sendTouchEvent('doubleclick', {});
+          lastTapTime = 0;
+        } else {
+          sendTouchEvent('click', {});
+          lastTapTime = now;
+        }
+      }
+
+      if (remainingTouches < 2) {
+        scrollStartY = null;
+        scrollStartX = null;
+      }
+
+      if (remainingTouches === 0) {
+        lastSingleTouchPos = null;
+        wasScrolling = false;
+        maxTouchCount = 0;
+      } else if (remainingTouches === 1) {
+        lastSingleTouchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    }, { passive: false });
+
+    // Long press for right-click
+    let longPressTimer = null;
+    touchpad.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        longPressTimer = setTimeout(() => {
+          sendTouchEvent('rightclick', {});
+          createRipple(e.touches[0].clientX, e.touches[0].clientY);
+          if (navigator.vibrate) navigator.vibrate(50);
+        }, 500);
+      }
+    });
+
+    touchpad.addEventListener('touchmove', () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    });
+
+    touchpad.addEventListener('touchend', () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    });
+
+    // Extras panel toggle
+    const extrasPanel = document.getElementById('extras-panel');
+    const moreBtn = document.getElementById('more-btn');
+    const urlInput = document.getElementById('url-input');
+
+    moreBtn.addEventListener('click', () => {
+      extrasPanel.classList.toggle('visible');
+      moreBtn.classList.toggle('active');
+      if (extrasPanel.classList.contains('visible')) {
+        urlInput.focus();
+      }
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
+    document.getElementById('go-url-btn').addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (url) {
+        const fullUrl = url.includes('://') ? url : `https://${url}`;
+        sendBrowserCommand('navigate', fullUrl);
+        urlInput.value = '';
+        extrasPanel.classList.remove('visible');
+        moreBtn.classList.remove('active');
+      }
+    });
+
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('go-url-btn').click();
+      }
+    });
+
+    textInput.addEventListener('input', (e) => {
+      const currentValue = textInput.value;
+      if (currentValue.length > lastInputValue.length) {
+        const newChars = currentValue.slice(lastInputValue.length);
+        sendTouchEvent('type', { text: newChars });
+      } else if (currentValue.length < lastInputValue.length) {
+        const deleteCount = lastInputValue.length - currentValue.length;
+        for (let i = 0; i < deleteCount; i++) {
+          sendTouchEvent('key', { key: 'Backspace' });
+        }
+      }
+      lastInputValue = currentValue;
+    });
+
+    document.getElementById('send-text-btn').addEventListener('click', () => {
+      sendTouchEvent('key', { key: 'Enter' });
+      textInput.value = '';
+      lastInputValue = '';
+      extrasPanel.classList.remove('visible');
+      moreBtn.classList.remove('active');
+    });
+
+    textInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendTouchEvent('key', { key: 'Enter' });
+        textInput.value = '';
+        lastInputValue = '';
+        extrasPanel.classList.remove('visible');
+        moreBtn.classList.remove('active');
+      }
+    });
+
+    document.getElementById('prevtab-btn').addEventListener('click', () => sendBrowserCommand('prevtab'));
+    document.getElementById('nexttab-btn').addEventListener('click', () => sendBrowserCommand('nexttab'));
+    document.getElementById('nav-back-btn').addEventListener('click', () => sendBrowserCommand('back'));
+    document.getElementById('refresh-btn').addEventListener('click', () => sendBrowserCommand('refresh'));
+    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+      // Use browser fullscreen command (chrome.windows API) which actually works!
+      sendBrowserCommand('fullscreen');
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
+    document.getElementById('nav-forward-btn').addEventListener('click', () => sendBrowserCommand('forward'));
+
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeValue = document.getElementById('volume-value');
+    volumeSlider.addEventListener('input', (e) => {
+      const value = e.target.value;
+      volumeValue.textContent = value + '%';
+      sendBrowserCommand('volume', value);
+    });
+
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('gesturechange', e => e.preventDefault());
+    document.addEventListener('gestureend', e => e.preventDefault());
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          console.log('[Touchpad] Page visible, reconnecting...');
+          reconnectDelay = 100;
+          reconnectAttempts = 0;
+          connect();
+        }
+      }
+    });
+
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[Touchpad] Wake Lock acquired');
+          wakeLock.addEventListener('release', () => {
+            console.log('[Touchpad] Wake Lock released');
+          });
+        }
+      } catch (err) {
+        console.log('[Touchpad] Wake Lock not available:', err.message);
+      }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && !wakeLock) {
+        await requestWakeLock();
+      }
+    });
+
+    function keepAlive() {
+      if (ws && ws.readyState === WebSocket.OPEN && isAuthenticated) {
+        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+      }
+      setTimeout(keepAlive, 5000);
+    }
+
+    connect();
+    requestWakeLock();
+    keepAlive();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('[Touchpad] SW registration failed:', err.message);
+      });
+    }
+  </script>
+</body>
+
+</html>
