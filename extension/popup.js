@@ -16,9 +16,12 @@ let networkIP = null;
 let pairingCode = null;
 let sessionId = null;
 
-// Generate pairing code
+// Generate pairing code in aabbcc format (e.g., 112233, 778899)
 function generatePairingCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const a = Math.floor(Math.random() * 10);
+    const b = Math.floor(Math.random() * 10);
+    const c = Math.floor(Math.random() * 10);
+    return `${a}${a}${b}${b}${c}${c}`;
 }
 
 // Generate session ID
