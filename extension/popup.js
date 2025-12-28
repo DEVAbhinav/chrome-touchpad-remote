@@ -7,7 +7,9 @@ const serverIPInput = document.getElementById('server-ip');
 const connectBtn = document.getElementById('connect-btn');
 const mobileUrl = document.getElementById('mobile-url');
 const qrCodeContainer = document.getElementById('qr-code');
-const pairingCodeDisplay = document.getElementById('pairing-code-display');
+const pairingCodeInput = document.getElementById('pairing-code-input');
+const saveCodeBtn = document.getElementById('save-code-btn');
+const randomCodeBtn = document.getElementById('random-code-btn');
 
 let qrCode = null;
 let networkIP = null;
@@ -23,6 +25,63 @@ function generatePairingCode() {
 function generateSessionId() {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substring(7);
 }
+
+// Save pairing code
+function savePairingCode(code) {
+    if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
+        alert('Please enter a valid 6-digit code');
+        return false;
+    }
+
+    pairingCode = code;
+    if (!sessionId) {
+        sessionId = generateSessionId();
+    }
+
+    // Store in chrome.storage
+    chrome.storage.local.set({
+        pairingCode: pairingCode,
+        sessionId: sessionId
+    });
+
+    // Send to server immediately
+    sendPairingCodeToServer();
+
+    // Visual feedback
+    saveCodeBtn.textContent = '✓ Saved!';
+    saveCodeBtn.style.background = '#10b981';
+    setTimeout(() => {
+        saveCodeBtn.textContent = 'Save Code';
+        saveCodeBtn.style.background = '';
+    }, 2000);
+
+    console.log('[Popup] Saved pairing code:', pairingCode);
+    return true;
+}
+
+// Handle Save button click
+saveCodeBtn.addEventListener('click', () => {
+    savePairingCode(pairingCodeInput.value.trim());
+});
+
+// Handle Random button click
+randomCodeBtn.addEventListener('click', () => {
+    const newCode = generatePairingCode();
+    pairingCodeInput.value = newCode;
+    savePairingCode(newCode);
+});
+
+// Handle Enter key in input
+pairingCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        savePairingCode(pairingCodeInput.value.trim());
+    }
+});
+
+// Only allow digits
+pairingCodeInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+});
 
 // Try to fetch actual network IP from server status
 async function fetchNetworkIP() {
@@ -60,7 +119,7 @@ async function initPopup() {
             console.log('[Popup] Generated new pairing code:', pairingCode);
         }
 
-        pairingCodeDisplay.textContent = pairingCode;
+        pairingCodeInput.value = pairingCode;
     });
 
     // Try to get network IP first

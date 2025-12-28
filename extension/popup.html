@@ -140,6 +140,30 @@
             margin-top: 8px;
         }
 
+        .pairing-input {
+            width: 100%;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 8px;
+            font-family: monospace;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            padding: 12px;
+        }
+
+        .pairing-input:focus {
+            outline: none;
+            border-color: white;
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .pairing-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
         .input-group {
             margin-bottom: 12px;
         }
@@ -259,8 +283,14 @@
 
     <div class="pairing-card">
         <div class="pairing-label">Your Pairing Code</div>
-        <div id="pairing-code-display" class="pairing-code">------</div>
-        <div class="pairing-hint">Enter this code on your mobile device</div>
+        <input type="text" id="pairing-code-input" class="pairing-input" maxlength="6" pattern="[0-9]*"
+            inputmode="numeric" placeholder="------">
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button id="save-code-btn" class="btn btn-primary" style="flex: 1; margin: 0;">Save Code</button>
+            <button id="random-code-btn" class="btn btn-secondary"
+                style="flex: 0; padding: 0 16px; margin: 0;">🎲</button>
+        </div>
+        <div class="pairing-hint">Enter a 6-digit code or tap 🎲 for random</div>
     </div>
 
     <div class="status-card">
