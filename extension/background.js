@@ -10,6 +10,46 @@ let heartbeatInterval = null;
 // Connection settings
 let serverIP = 'localhost';
 
+// Pairing code helpers (also in popup.js but needed here for background reconnection)
+function generatePairingCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function generateSessionId() {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+}
+
+// Ensure pairing code exists and send to server
+async function ensureAndSendPairingCode() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['pairingCode', 'sessionId'], (result) => {
+            let code = result.pairingCode;
+            let session = result.sessionId;
+
+            // Generate if missing
+            if (!code || !session) {
+                code = generatePairingCode();
+                session = generateSessionId();
+                chrome.storage.local.set({ pairingCode: code, sessionId: session });
+                console.log('[Touchpad] Generated new pairing code in background:', code);
+            }
+
+            // Send to server with small delay
+            setTimeout(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    console.log('[Touchpad] Sending pairing code to server:', code);
+                    ws.send(JSON.stringify({
+                        type: 'setPairingCode',
+                        code: code,
+                        sessionId: session
+                    }));
+                }
+                resolve();
+            }, 100);
+        });
+    });
+}
+
 // Load saved settings
 chrome.storage.local.get(['serverIP'], (result) => {
     if (result.serverIP) {
@@ -66,22 +106,8 @@ function connect() {
             // Register as extension client immediately
             ws.send(JSON.stringify({ type: 'register', clientType: 'extension' }));
 
-            // Re-send pairing code if we have one stored (handles reconnection after sleep)
-            chrome.storage.local.get(['pairingCode', 'sessionId'], (result) => {
-                if (result.pairingCode && result.sessionId) {
-                    // Small delay to ensure registration completes first
-                    setTimeout(() => {
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                            console.log('[Touchpad] Re-sending pairing code after reconnection');
-                            ws.send(JSON.stringify({
-                                type: 'setPairingCode',
-                                code: result.pairingCode,
-                                sessionId: result.sessionId
-                            }));
-                        }
-                    }, 100);
-                }
-            });
+            // Always ensure pairing code exists and send to server
+            ensureAndSendPairingCode();
 
             // Notify popup of connection status
             chrome.runtime.sendMessage({ type: 'connectionStatus', connected: true })
