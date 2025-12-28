@@ -66,6 +66,23 @@ function connect() {
             // Register as extension client immediately
             ws.send(JSON.stringify({ type: 'register', clientType: 'extension' }));
 
+            // Re-send pairing code if we have one stored (handles reconnection after sleep)
+            chrome.storage.local.get(['pairingCode', 'sessionId'], (result) => {
+                if (result.pairingCode && result.sessionId) {
+                    // Small delay to ensure registration completes first
+                    setTimeout(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            console.log('[Touchpad] Re-sending pairing code after reconnection');
+                            ws.send(JSON.stringify({
+                                type: 'setPairingCode',
+                                code: result.pairingCode,
+                                sessionId: result.sessionId
+                            }));
+                        }
+                    }, 100);
+                }
+            });
+
             // Notify popup of connection status
             chrome.runtime.sendMessage({ type: 'connectionStatus', connected: true })
                 .catch((e) => console.log('[Touchpad] Popup not open'));
